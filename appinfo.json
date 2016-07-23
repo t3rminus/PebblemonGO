@@ -30,8 +30,8 @@
                 "type": "font"
             },
             {
-                "file": "images/pkmn_41",
-                "name": "IMAGES_PKMN_41",
+                "file": "images/pkmn_41.png",
+                "name": "IMAGES_PKMN_41_PNG",
                 "type": "bitmap"
             }
         ]
