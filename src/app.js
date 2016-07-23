@@ -4,15 +4,18 @@
  * This is where you write your app.
  */
 
-var testPos = [49.2359825395677,-123.00481796264647];
+var testPos = [49.2359825395677, -123.00481796264647];
 
 var UI = require('ui'),
 	ajax = require('ajax'),
 	names = require('names'),
-    debounce = require('debounce');
+	debounce = require('debounce');
 
 var main = new UI.Menu({
-    background: 'black',
+	background: 'black',
+	textColor: 'white',
+	highlightBackgroundColor: 'white',
+	highlightTextColor: 'black',
 	sections: [{
 		items: [{
 			title: 'Loading...',
@@ -20,11 +23,10 @@ var main = new UI.Menu({
 		}]
 	}]
 });
-main.on('select', function(e) {
+main.on('change', function(e) {
+	console.log(e);
 });
 main.show();
-
-var pkmn = [];
 
 var getDistance = function(lat1, lon1, lat2, lon2) {
 	var radlat1 = Math.PI * lat1 / 180;
@@ -37,51 +39,68 @@ var getDistance = function(lat1, lon1, lat2, lon2) {
 	return Math.round(dist * 111189.57696); // To nearest metre
 };
 
+var pkmn = [];
+
 function success(pos) {
-	
+
 	var crd = pos.coords;
-	if(testPos) {
-		crd = { latitude: testPos[0], longitude: testPos[1] };
+	if (testPos) {
+		crd = {
+			latitude: testPos[0],
+			longitude: testPos[1]
+		};
 	}
 	console.log("Got Lat: ", crd.latitude);
 	console.log("Got Lon: ", crd.longitude);
-	ajax({ url: 'https://pokevision.com/map/data/'+crd.latitude+'/'+crd.longitude, type: 'json' }, function(result) {
-			
-			var items = [];
-			if(result.status == "success") {
-				pkmn = result.pokemon;
-				for(var i = 0; i < pkmn.length; i++) {
-                    var pk = pkmn[i];
-					pk.distance = getDistance(crd.latitude, crd.longitude, pk.latitude, pk.longitude);
-                    pk.name = names[pk.pokemonId].name;
-                    pk.color = names[pk.pokemonId].color;
-				}
-				pkmn.sort(function(a, b){ return a.distance - b.distance; });
-				pkmn.forEach(function(pk) {
-					items.push({
-						title: pk.name,
-                         icon: 'images/pkmn_' + pk.pokemonId,
-						subtitle: pk.distance + "m"
+	ajax({
+			url: 'https://pokevision.com/map/data/' + crd.latitude + '/' + crd.longitude,
+			type: 'json'
+		}, function(result) {
+			main.selection(function(sel) {
+				var items = [];
+				if (result.status == "success") {
+					pkmn = result.pokemon;
+					for (var i = 0; i < pkmn.length; i++) {
+						var pk = pkmn[i];
+						pk.distance = getDistance(crd.latitude, crd.longitude, pk.latitude, pk.longitude);
+						pk.name = names[pk.pokemonId].name;
+						pk.color = names[pk.pokemonId].color;
+					}
+					pkmn.sort(function(a, b) {
+						return a.distance - b.distance;
 					});
-				});
-			} else {
-				items.push({
-					title: "Error",
-					subtitle: "An unknown error ocurred"
-				});
-			}
-			
-			main.items(0,items);
+					pkmn.forEach(function(pk) {
+						items.push({
+							title: pk.name,
+							icon: 'images/pkmn_' + pk.pokemonId,
+							subtitle: pk.distance + "m"
+						});
+					});
+				} else {
+					items.push({
+						title: "Error",
+						subtitle: "An unknown error ocurred"
+					});
+				}
+				if (sel.itemIndex > items.length - 1) {
+					sel.itemIndex = items.length - 1;
+				}
+				main.items(0, items);
+				main.selection(sel.selectionIndex, sel.itemIndex);
+			});
 		},
 		function(err) {
-            var item = { title: "Error", subtitle: "An unknown error ocurred" };
-            if(/maintenance/i.test(err)) {
-                item.title = "Maintenance";
-                item.subtitle = "Pokévision is offline";
-            }
-            main.items(0,[item]);
+			var item = {
+				title: "Error",
+				subtitle: "An unknown error ocurred"
+			};
+			if (/maintenance/i.test(err)) {
+				item.title = "Maintenance";
+				item.subtitle = "Pokévision is offline";
+			}
+			main.items(0, [item]);
 		}
-    );
+	);
 }
 
 function error(err) {
