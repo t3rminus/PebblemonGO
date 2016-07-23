@@ -12,10 +12,6 @@ var UI = require('ui'),
 	debounce = require('debounce');
 
 var main = new UI.Menu({
-	background: 'black',
-	textColor: 'white',
-	highlightBackgroundColor: 'white',
-	highlightTextColor: 'black',
 	sections: [{
 		items: [{
 			title: 'Loading...',
@@ -39,7 +35,18 @@ var getDistance = function(lat1, lon1, lat2, lon2) {
 	return Math.round(dist * 111189.57696); // To nearest metre
 };
 
-var pkmn = [];
+var getTime = function(time) {
+    time = time - Math.floor(Date.now() / 1000);
+    var min = Math.max(Math.floor(time / 60), 0);
+    var sec = Math.max(time % 60, 0);
+    if(sec < 10) {
+        sec = '0' + sec;
+    }
+    return min + ':' + sec;
+};
+
+var pkmn = [],
+    dispErr = { title: "Loading", subtitle: "Please wait..." };
 
 function success(pos) {
 
@@ -50,43 +57,30 @@ function success(pos) {
 			longitude: testPos[1]
 		};
 	}
-	console.log("Got Lat: ", crd.latitude);
-	console.log("Got Lon: ", crd.longitude);
+    
 	ajax({
 			url: 'https://pokevision.com/map/data/' + crd.latitude + '/' + crd.longitude,
 			type: 'json'
 		}, function(result) {
 			main.selection(function(sel) {
-				var items = [];
 				if (result.status == "success") {
-					pkmn = result.pokemon;
-					for (var i = 0; i < pkmn.length; i++) {
-						var pk = pkmn[i];
+					var tmp = result.pokemon;
+					for (var i = 0; i < tmp.length; i++) {
+						var pk = tmp[i];
 						pk.distance = getDistance(crd.latitude, crd.longitude, pk.latitude, pk.longitude);
 						pk.name = names[pk.pokemonId].name;
 						pk.color = names[pk.pokemonId].color;
 					}
-					pkmn.sort(function(a, b) {
+					tmp.sort(function(a, b) {
 						return a.distance - b.distance;
 					});
-					pkmn.forEach(function(pk) {
-						items.push({
-							title: pk.name,
-							icon: 'images/pkmn_' + pk.pokemonId,
-							subtitle: pk.distance + "m"
-						});
-					});
+					pkmn = tmp;
 				} else {
-					items.push({
-						title: "Error",
-						subtitle: "An unknown error ocurred"
-					});
+					dispErr = {
+        				title: "Error",
+        				subtitle: "An unknown error ocurred"
+        			};
 				}
-				if (sel.itemIndex > items.length - 1) {
-					sel.itemIndex = items.length - 1;
-				}
-				main.items(0, items);
-				main.selection(sel.selectionIndex, sel.itemIndex);
 			});
 		},
 		function(err) {
@@ -98,13 +92,17 @@ function success(pos) {
 				item.title = "Maintenance";
 				item.subtitle = "Pokévision is offline";
 			}
-			main.items(0, [item]);
+            dispErr = item;
 		}
 	);
 }
 
 function error(err) {
 	console.warn('ERROR(' + err.code + '): ' + err.message);
+    dispErr = {
+        title: "Error",
+        subtitle: "An unknown error ocurred"
+    };
 }
 
 var options = {
@@ -112,5 +110,31 @@ var options = {
 	timeout: 60000,
 	maximumAge: 0
 };
+
+setInterval(function() {
+    main.selection(function(sel) {
+        var items = [];
+        if(pkmn.length) {
+            for(var i = 0; i < pkmn.length; i++) {
+                var pk = pkmn[i];
+                var time = getTime(pk.expiration_time);
+                if(time != "0:00") {
+                    items.push({
+                        title: pk.name,
+                        icon: 'images/pkmn_' + pk.pokemonId + '.png',
+                        subtitle: pk.distance + "m" + '  -  For: ' + time
+                    });
+                }
+            }
+        } else {
+            items.push(dispErr);
+        }
+        if (sel.itemIndex > items.length - 1) {
+            sel.itemIndex = items.length - 1;
+        }
+        main.items(0, items);
+        main.selection(sel.selectionIndex, sel.itemIndex);
+    });
+}, 1000);
 
 navigator.geolocation.watchPosition(debounce(6000, success), error, options);

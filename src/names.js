@@ -153,7 +153,7 @@ this.exports = {
         "type": "Ground"
     },
     "29": {
-        "name": "Nidoran♀",
+        "name": "Nidoran-F",
         "color": "#A040A0",
         "type": "Poison"
     },
@@ -169,7 +169,7 @@ this.exports = {
         "type2": "Ground"
     },
     "32": {
-        "name": "Nidoran♂",
+        "name": "Nidoran-M",
         "color": "#A040A0",
         "type": "Poison"
     },
