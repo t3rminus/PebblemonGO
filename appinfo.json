@@ -4,7 +4,7 @@
         "location"
     ],
     "companyName": "k3vin.net@gmail.com",
-    "longName": "TestProject",
+    "longName": "Pebblemon Go",
     "projectType": "pebblejs",
     "resources": {
         "media": [
@@ -787,7 +787,7 @@
         ]
     },
     "sdkVersion": "3",
-    "shortName": "TestProject",
+    "shortName": "Pebblemon Go",
     "targetPlatforms": [
         "aplite",
         "basalt",
