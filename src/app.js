@@ -4,7 +4,7 @@
  * This is where you write your app.
  */
 
-var testPos = [49.2023382, -122.9092728];
+//var testPos = [49.2023382, -122.9092728];
 
 var UI = require('ui'),
 	Vector2 = require('vector2'),
@@ -18,6 +18,7 @@ var pkmn = [],
 	currentLon = 0,
 	jobCounter = 0,
 	isUpdating = false,
+    listHidden = false,
 	dispErr = {
 		title: "Loading",
 		subtitle: "Please wait..."
@@ -63,7 +64,7 @@ var getTime = function(time) {
 };
 
 var getMap = function(lat, lon, id, w, h) {
-	return "http://maps.googleapis.com/maps/api/staticmap?format=png8&center=" + lat + "," + lon + "&zoom=16&size=" + w + "x" + h + "&maptype=terrain&sensor=false&markers=icon:http://ugc.pokevision.com/images/pokemon/" + id + ".png|" + lat + "," + lon;
+	return "http://maps.googleapis.com/maps/api/staticmap?format=png32&center=" + lat + "," + lon + "&zoom=16&size=" + w + "x" + h + "&maptype=terrain&sensor=false&markers=icon:http://ugc.pokevision.com/images/pokemon/" + id + ".png|" + lat + "," + lon;
 };
 
 var updateMon = function(result) {
@@ -125,22 +126,14 @@ var handleResult = function(result) {
 	isUpdating = false;
 };
 
-function success(pos) {
+function pokeVision(lat, lon) {
 	if (isUpdating) {
 		return;
 	}
 	isUpdating = true;
-	var crd = pos.coords;
-	if (testPos) {
-		crd.latituide = testPos[0];
-		crd.longitude = testPos[1];
-	}
-
-	currentLat = crd.latitude;
-	currentLon = crd.longitude;
 
 	ajax({
-		url: 'https://pokevision.com/map/data/' + crd.latitude + '/' + crd.longitude,
+		url: 'https://pokevision.com/map/data/' + lat + '/' + lon,
 		type: 'json'
 	}, handleResult, handleError);
 }
@@ -161,6 +154,9 @@ var options = {
 };
 
 setInterval(function() {
+    if(listHidden) {
+        return;
+    }
 	main.selection(function(sel) {
 		// console.log('Got Sel');
 		var items = [];
@@ -201,10 +197,10 @@ setInterval(function() {
 		main.selection(sel.selectionIndex, sel.itemIndex);
 		//console.log('Swap Menu');
 	});
-}, 1000);
+}, 5000);
 
 main.on('select', function(sel) {
-	console.log(sel);
+	//console.log(sel.item.title);
 	if (pkmn[sel.itemIndex]) {
 		var res = Feature.resolution();
 		var pk = pkmn[sel.itemIndex];
@@ -224,7 +220,40 @@ main.on('select', function(sel) {
 		});
 		wind.add(image);
 		wind.show();
+        wind.on('click','back',function(e){
+           wind.hide();
+           wind = undefined;
+        });
 	}
 });
 
-navigator.geolocation.watchPosition(debounce(60000, success), error, options);
+main.on('hide', function() {
+  listHidden = true;
+});
+
+main.on('show', function(){
+   listHidden = false; 
+});
+
+var pokeVisionUpdate = debounce(60000, pokeVision);
+var locationSuccess = function(pos) {
+    var crd = pos.coords;
+	/*if (testPos) {
+		crd.latituide = testPos[0];
+		crd.longitude = testPos[1];
+	}*/
+
+	currentLat = crd.latitude;
+	currentLon = crd.longitude;
+    
+    pokeVisionUpdate(currentLat, currentLon);
+    for (var i = 0; i < pkmn.length; i++) {
+		var pk = pkmn[i];
+		pk.distance = getDistance(currentLat, currentLon, pk.latitude, pk.longitude);
+	}
+	pkmn.sort(function(a, b) {
+		return a.distance - b.distance;
+	});
+};
+
+navigator.geolocation.watchPosition(locationSuccess, error, options);
